@@ -5,8 +5,13 @@ const feedbackSchema = new mongoose.Schema({
   rating: { type: Number, required: true },
   text: { type: String, required: true },
   image: { type: String },
-  date: { type: Date, default: Date.now },
-});
 
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
+});
+feedbackSchema.pre("save", function (next) {
+  this.updated_at = new Date();
+  next();
+});
 const Feedback = mongoose.model("Feedback", feedbackSchema);
 export default Feedback;
