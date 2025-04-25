@@ -89,33 +89,62 @@ export const replyToFeedback = async (req, res) => {
 export const suggestReplies = async (req, res) => {
   const { feedbackText } = req.body;
 
+  // Validate that feedback text is provided
   if (!feedbackText) {
     return res.status(400).json({ error: 'Feedback text is required' });
   }
 
   try {
-    // Set the Hugging Face API URL for your model
-    const url = 'https://api-inference.huggingface.co/models/YOUR_MODEL_NAME';
-    
-    // Set the Hugging Face API token
+    // Set the OpenAI API URL for chat completions
+    // Using gpt-3.5-turbo as an example model
+    const url = 'https://api.openai.com/v1/chat/completions';
+
+    // Set the OpenAI API token in the Authorization header
     const headers = {
-      'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json', // OpenAI API requires Content-Type
     };
 
-    // Send the request to Hugging Face
+    // Prepare the request body for the OpenAI Chat Completions API
+    // We structure the input as a 'messages' array, typical for chat models
+    const requestBody = {
+      model: 'gpt-3.5-turbo', // Specify the OpenAI model to use
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that suggests polite and constructive replies to customer feedback. Provide a few distinct suggestions.',
+        },
+        {
+          role: 'user',
+          content: `Suggest replies for the following feedback: "${feedbackText}"`,
+        },
+      ],
+      max_tokens: 150, // Limit the length of the generated response
+      temperature: 0.7, // Control the creativity/randomness of the output
+    };
+
+    // Send the request to the OpenAI API
     const response = await axios.post(
       url,
-      { inputs: feedbackText },
+      requestBody, // Use the structured request body
       { headers }
     );
 
-    // Extract the suggestions from the response
-    const suggestions = response.data;
+    // Extract the generated suggestions from the OpenAI response
+    // The response structure for chat completions is different from Hugging Face
+    // We expect the main content in response.data.choices[0].message.content
+    const suggestions = response.data.choices[0]?.message?.content.trim();
+console.log('✌️suggestions --->', suggestions);
+    res.json({ suggestions }); // Send the extracted suggestions back to the client
+    
 
-    res.json({ suggestions });
+
   } catch (error) {
-    console.error('Error generating suggestions:', error);
-    res.status(500).json({ error: 'Failed to generate suggestions' });
+    // Log the detailed error for debugging
+    console.error('Error generating suggestions from OpenAI:', error.response?.data || error.message);
+
+    // Respond with a 500 status and a generic error message
+    res.status(500).json({ error: 'Failed to generate suggestions using OpenAI' });
   }
 };
 
