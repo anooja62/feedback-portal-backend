@@ -1,11 +1,13 @@
 import Feedback from '../models/Feedback.js';
-import User from '../models/User.js'; // Make sure this import exists to check user roles
+import axios from 'axios';
 
+import dotenv from 'dotenv';
+dotenv.config();
 // Create Feedback (for clients)
 export const createFeedback = async (req, res) => {
   const { rating, text } = req.body;
   const image = req.file ? `/uploads/${req.file.filename}` : null;
-console.log('✌️image --->', image);
+
 
 
   try {
@@ -31,8 +33,7 @@ console.log('✌️image --->', image);
 
 // Get all Feedback (for admin)
 export const getAllFeedback = async (req, res) => {
-console.log('✌️getAllFeedback --->');
-console.log('✌️req --->', req.user);
+
   try {
     // Check if user is authenticated and has admin privileges
     if (!req.user || req.user.role !== 'admin') {
@@ -81,3 +82,40 @@ export const replyToFeedback = async (req, res) => {
     res.status(500).json({ message: 'Server error while replying to feedback.' });
   }
 };
+
+
+
+
+export const suggestReplies = async (req, res) => {
+  const { feedbackText } = req.body;
+
+  if (!feedbackText) {
+    return res.status(400).json({ error: 'Feedback text is required' });
+  }
+
+  try {
+    // Set the Hugging Face API URL for your model
+    const url = 'https://api-inference.huggingface.co/models/YOUR_MODEL_NAME';
+    
+    // Set the Hugging Face API token
+    const headers = {
+      'Authorization': `Bearer ${process.env.HUGGING_FACE_API_KEY}`,
+    };
+
+    // Send the request to Hugging Face
+    const response = await axios.post(
+      url,
+      { inputs: feedbackText },
+      { headers }
+    );
+
+    // Extract the suggestions from the response
+    const suggestions = response.data;
+
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('Error generating suggestions:', error);
+    res.status(500).json({ error: 'Failed to generate suggestions' });
+  }
+};
+
